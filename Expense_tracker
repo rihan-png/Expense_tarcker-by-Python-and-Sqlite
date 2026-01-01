@@ -1,4 +1,4 @@
-"""
+ """
 Expense Tracker - CLI application using Python and SQLite
 Author: Rihan
 Purpose: Track personal expenses using a local database
@@ -7,39 +7,58 @@ Purpose: Track personal expenses using a local database
 import sqlite3
 from datetime import datetime
 
+DB_NAME = "expenses.db"
+
 
 # ==================== DATABASE SETUP ====================
 
 def create_database():
     """Create the SQLite database and expenses table if not exists."""
-    conn = sqlite3.connect("expenses.db")
-    cursor = conn.cursor()
+    with sqlite3.connect(DB_NAME) as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS expenses (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                date TEXT NOT NULL,
+                category TEXT NOT NULL,
+                amount REAL NOT NULL,
+                note TEXT
+            )
+        """)
+        
+        # Add note column if it doesn't exist (for existing databases)
+        cursor.execute("PRAGMA table_info(expenses)")
+        columns = [col[1] for col in cursor.fetchall()]
+        if 'note' not in columns:
+            cursor.execute("ALTER TABLE expenses ADD COLUMN note TEXT")
 
-    cursor.execute("""
-        CREATE TABLE IF NOT EXISTS expenses (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date TEXT NOT NULL,
-            category TEXT NOT NULL,
-            amount REAL NOT NULL,
-            note TEXT
-        )
-    """)
 
-    conn.commit()
-    conn.close()
+# ==================== VALIDATION ====================
+
+def validate_date(date_str):
+    try:
+        datetime.strptime(date_str, "%Y-%m-%d")
+        return True
+    except ValueError:
+        return False
 
 
 # ==================== CORE FUNCTIONS ====================
 
 def add_expense():
-    """Add a new expense record."""
     print("\n--- Add New Expense ---")
 
     date_input = input("Enter date (YYYY-MM-DD) or press Enter for today: ").strip()
     if not date_input:
         date_input = datetime.now().strftime("%Y-%m-%d")
+    elif not validate_date(date_input):
+        print("Invalid date format.")
+        return
 
     category = input("Enter category (Food, Travel, Bills, etc.): ").strip()
+    if not category:
+        print("Category cannot be empty.")
+        return
 
     while True:
         try:
@@ -49,31 +68,25 @@ def add_expense():
                 continue
             break
         except ValueError:
-            print("Please enter a valid number.")
+            print("Enter a valid number.")
 
     note = input("Enter note (optional): ").strip()
 
-    conn = sqlite3.connect("expenses.db")
-    cursor = conn.cursor()
+    with sqlite3.connect(DB_NAME) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "INSERT INTO expenses (date, category, amount, note) VALUES (?, ?, ?, ?)",
+            (date_input, category, amount, note)
+        )
 
-    cursor.execute(
-        "INSERT INTO expenses (date, category, amount, note) VALUES (?, ?, ?, ?)",
-        (date_input, category, amount, note)
-    )
-
-    conn.commit()
-    conn.close()
-    print("✓ Expense added successfully!")
+    print("✓ Expense added successfully")
 
 
 def view_all_expenses():
-    """Display all expense records."""
-    conn = sqlite3.connect("expenses.db")
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT * FROM expenses ORDER BY date DESC")
-    records = cursor.fetchall()
-    conn.close()
+    with sqlite3.connect(DB_NAME) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT * FROM expenses ORDER BY date DESC")
+        records = cursor.fetchall()
 
     if not records:
         print("\nNo expenses found.")
@@ -84,39 +97,32 @@ def view_all_expenses():
     print("=" * 70)
 
     for r in records:
-        print(f"{r[0]:<5} {r[1]:<12} {r[2]:<15} ${r[3]:<9.2f} {r[4] or '-'}")
+        print(f"{r[0]:<5} {r[1]:<12} {r[2]:<15} ₹{r[3]:<9.2f} {r[4] or '-'}")
 
     print("=" * 70)
 
 
 def view_total_expenses():
-    """Show total expense amount."""
-    conn = sqlite3.connect("expenses.db")
-    cursor = conn.cursor()
-
-    cursor.execute("SELECT SUM(amount), COUNT(*) FROM expenses")
-    total, count = cursor.fetchone()
-    conn.close()
+    with sqlite3.connect(DB_NAME) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT SUM(amount), COUNT(*) FROM expenses")
+        total, count = cursor.fetchone()
 
     total = total if total else 0.0
-    print(f"\nTotal Expenses: ${total:.2f}")
+    print(f"\nTotal Expenses: ₹{total:.2f}")
     print(f"Total Transactions: {count}")
 
 
 def view_category_totals():
-    """Show expenses grouped by category."""
-    conn = sqlite3.connect("expenses.db")
-    cursor = conn.cursor()
-
-    cursor.execute("""
-        SELECT category, SUM(amount), COUNT(*)
-        FROM expenses
-        GROUP BY category
-        ORDER BY SUM(amount) DESC
-    """)
-
-    data = cursor.fetchall()
-    conn.close()
+    with sqlite3.connect(DB_NAME) as conn:
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT category, SUM(amount), COUNT(*)
+            FROM expenses
+            GROUP BY category
+            ORDER BY SUM(amount) DESC
+        """)
+        data = cursor.fetchall()
 
     if not data:
         print("\nNo data found.")
@@ -127,25 +133,21 @@ def view_category_totals():
     print("=" * 50)
 
     for category, total, count in data:
-        print(f"{category:<20} ${total:<14.2f} {count}")
+        print(f"{category:<20} ₹{total:<14.2f} {count}")
 
     print("=" * 50)
 
 
 def view_monthly_total():
-    """Show expenses for a given month."""
     month = input("Enter month (YYYY-MM): ").strip()
 
-    conn = sqlite3.connect("expenses.db")
-    cursor = conn.cursor()
-
-    cursor.execute(
-        "SELECT date, category, amount, note FROM expenses WHERE date LIKE ?",
-        (month + "%",)
-    )
-
-    records = cursor.fetchall()
-    conn.close()
+    with sqlite3.connect(DB_NAME) as conn:
+        cursor = conn.cursor()
+        cursor.execute(
+            "SELECT date, category, amount, note FROM expenses WHERE date LIKE ?",
+            (month + "%",)
+        )
+        records = cursor.fetchall()
 
     if not records:
         print("No records found for this month.")
@@ -157,37 +159,30 @@ def view_monthly_total():
     print("=" * 60)
 
     for r in records:
-        print(f"{r[0]} | {r[1]} | ${r[2]:.2f} | {r[3] or '-'}")
+        print(f"{r[0]} | {r[1]} | ₹{r[2]:.2f} | {r[3] or '-'}")
         total += r[2]
 
     print("=" * 60)
-    print(f"Monthly Total: ${total:.2f}")
+    print(f"Monthly Total: ₹{total:.2f}")
 
 
 def delete_expense():
-    """Delete an expense by ID."""
     try:
         exp_id = int(input("Enter expense ID to delete: "))
     except ValueError:
         print("Invalid ID.")
         return
 
-    conn = sqlite3.connect("expenses.db")
-    cursor = conn.cursor()
+    with sqlite3.connect(DB_NAME) as conn:
+        cursor = conn.cursor()
+        cursor.execute("SELECT id FROM expenses WHERE id = ?", (exp_id,))
+        if not cursor.fetchone():
+            print("Expense not found.")
+            return
 
-    cursor.execute("SELECT * FROM expenses WHERE id = ?", (exp_id,))
-    record = cursor.fetchone()
+        cursor.execute("DELETE FROM expenses WHERE id = ?", (exp_id,))
 
-    if not record:
-        print("Expense not found.")
-        conn.close()
-        return
-
-    cursor.execute("DELETE FROM expenses WHERE id = ?", (exp_id,))
-    conn.commit()
-    conn.close()
-
-    print("✓ Expense deleted successfully!")
+    print("✓ Expense deleted successfully")
 
 
 # ==================== MENU SYSTEM ====================
@@ -208,7 +203,7 @@ def display_menu():
 
 def main():
     create_database()
-    print("\nWelcome to Expense Tracker!")
+    print("\nWelcome to Expense Tracker")
 
     while True:
         display_menu()
@@ -237,4 +232,3 @@ def main():
 
 if __name__ == "__main__":
     main()
- 

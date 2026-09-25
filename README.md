@@ -1,30 +1,34 @@
-# 📊 Personal Expense Tracker (Python + SQLite)
+# 📊 Personal Expense Tracker
 
-## 📌 Overview
-This is a **command-line based personal expense tracker** developed using **Python and SQLite**.  
-The project applies database concepts learned during the current semester to solve a real-world problem—tracking daily expenses efficiently without manual records.
-
-The project is under continuous improvement and is designed with future **Android integration** in mind.
+A lightweight, command-line personal expense management system built using **Python** and **SQLite**. This project bridges classroom database concepts with practical utility, designed to efficiently track daily expenses without manual record-keeping.
 
 ---
 
-## 🛠️ Technologies Used
-- Python
-- SQLite
-- SQL (CRUD operations)
-- CLI (Command Line Interface)
+## 🚀 Features
+
+- **Record Expenses:** Log new expenses instantly with amount, category, and date.
+- **Tabular Views:** View all recorded expenses cleanly structured in a table format.
+- **Financial Overheads:** Instantly calculate total overall expenditures.
+- **Category-wise Summary:** Break down spending habits across different categories (e.g., Food, Travel, Utilities).
+- **Monthly Reports:** Filter and analyze expenses by month.
+- **Delete Records:** Remove erroneous or outdated entries safely by ID.
+- **Offline & Lightweight:** Powered by a local SQLite database requiring no complex setup.
 
 ---
 
-## ⚙️ Features
-- Add new expense records
-- View all expenses in tabular format
-- View total expenses
-- Category-wise expense summary
-- Monthly expense report
-- Delete expense by ID
-- Offline and lightweight database
+## 🛠️ Tech Stack
+
+- **Language:** Python
+- **Database:** SQLite
+- **Concepts Applied:** SQL CRUD Operations, Relational Database Design, Modular Programming
 
 ---
 
-## 📂 Project Structure
+## 📁 Project Structure
+
+```text
+Expense_tarcker-by-Python-and-Sqlite/
+│
+├── Expense_tracker/       # Core source code files and database logic
+├── LICENSE                # MIT License
+└── README.md              # Project documentation
